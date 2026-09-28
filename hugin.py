@@ -51,7 +51,7 @@ def send_to_analyzer(csv_path: str, url: str) -> None:
             response = requests.post(
                 endpoint,
                 files={"file": (os.path.basename(csv_path), fh, "text/csv")},
-                timeout=(10, 120),
+                timeout=(20, 120),
             )
     except Exception as exc:
         print("[W] Could not reach retrohunt-analyzer-service: %s" % exc)
@@ -98,18 +98,17 @@ def main():
     print(Style.RESET_ALL + " ")
 
     parser = argparse.ArgumentParser(description='Retrohunt Checker')
-    parser.add_argument('-r', help='Name for the queried retrohunt', metavar='retrohunt-name', default='')
+    parser.add_argument('-r', help='Name for the queried retrohunt', metavar='retrohunt-name', required=True)
     parser.add_argument('-i', help='Name of the ini file that holds the VT API key', metavar='ini-file',
                         default=os.path.dirname(os.path.abspath(__file__)) + '/munin.ini')
-    # Infer a default CSV name based on the -r argument before we finalize parsing
-    temp_args, _ = parser.parse_known_args()
-    default_csv = f"{temp_args.r}_retrohunt_results.csv" if temp_args.r else "retrohunt_results.csv"
-    parser.add_argument('--csv-path', help='Write a CSV with the results', default=default_csv)
+    parser.add_argument('--csv-path', help='Write a CSV with the results', default=None)
     parser.add_argument('--debug', action='store_true', default=False, help='Debug output')
     parser.add_argument('--comments', help='Download VirusTotal comments', action='store_true', default=False)
     parser.add_argument('--no-comments', help='Deprecated - set by default, doesn\'t do anything', default=False)
-    
+
     args = parser.parse_args()
+    if args.csv_path is None:
+        args.csv_path = f"{args.r}.csv"
 
     # PyMISP error handling > into Nirvana
     logger = logging.getLogger("pymisp")
