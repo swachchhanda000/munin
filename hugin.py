@@ -51,7 +51,7 @@ def send_to_analyzer(csv_path: str, url: str) -> None:
             response = requests.post(
                 endpoint,
                 files={"file": (os.path.basename(csv_path), fh, "text/csv")},
-                timeout=120,
+                timeout=(10, 120),
             )
     except Exception as exc:
         print("[W] Could not reach retrohunt-analyzer-service: %s" % exc)
@@ -101,7 +101,10 @@ def main():
     parser.add_argument('-r', help='Name for the queried retrohunt', metavar='retrohunt-name', default='')
     parser.add_argument('-i', help='Name of the ini file that holds the VT API key', metavar='ini-file',
                         default=os.path.dirname(os.path.abspath(__file__)) + '/munin.ini')
-    parser.add_argument('--csv-path', help='Write a CSV with the results', default='retrohunt_results.csv')
+    # Infer a default CSV name based on the -r argument before we finalize parsing
+    temp_args, _ = parser.parse_known_args()
+    default_csv = f"{temp_args.r}_retrohunt_results.csv" if temp_args.r else "retrohunt_results.csv"
+    parser.add_argument('--csv-path', help='Write a CSV with the results', default=default_csv)
     parser.add_argument('--debug', action='store_true', default=False, help='Debug output')
     parser.add_argument('--comments', help='Download VirusTotal comments', action='store_true', default=False)
     parser.add_argument('--no-comments', help='Deprecated - set by default, doesn\'t do anything', default=False)
@@ -115,7 +118,7 @@ def main():
         logger.setLevel(logging.DEBUG)
 
     # Read the config file
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'))
     try:
         config.read(args.i)
         munin_vt.VT_PUBLIC_API_KEY = config['DEFAULT']['VT_PUBLIC_API_KEY']
@@ -160,7 +163,7 @@ def main():
         printResult(file_info, i, len(found_files))
         writeCSV(file_info, csv_filename, csv_field_order, include_vendors=False)
 
-    if analyzer_url and analyzer_url != '-':
+    if analyzer_url and analyzer_url != '-' and found_files:
         send_to_analyzer(csv_filename, analyzer_url)
 
 
